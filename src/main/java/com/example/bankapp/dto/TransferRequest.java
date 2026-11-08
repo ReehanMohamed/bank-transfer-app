@@ -13,5 +13,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class TransferRequest {
+    private String senderAccountNumber;
 
+    private String receiverAccountNumber;
+
+    private double amount;
 }
