@@ -19,7 +19,7 @@ import com.example.bankapp.repository.CustomerRepository;
 import com.example.bankapp.service.BankService;
 import com.example.bankapp.service.TransactionAuditService;
 @RestController
-@RequestMapping("/api/bank")
+@RequestMapping("/bank")
 public class BankController {
     private final BankService bankService;
     private final TransactionAuditService auditService;

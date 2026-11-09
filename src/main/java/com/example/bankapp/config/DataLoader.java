@@ -8,7 +8,7 @@ import com.example.bankapp.model.Customer;
 import com.example.bankapp.repository.CustomerRepository;
 
 //import java.math.BigDecimal;
-//import java.util.List;
+import java.util.List;
 
 /** Inserts three sample customers the first time the application starts (empty database). */
 @Component

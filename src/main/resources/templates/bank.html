@@ -74,13 +74,13 @@
                 <div class="field">
                     <label for="fromAccount">From (sender)</label>
 
-                    <select id="fromAccount" th:field="*{fromAccount}">
+                    <select id="fromAccount" th:field="*{senderAccountNumber}">
                         <option value="">-- Select sender --</option>
 
                         <option th:each="c : ${allCustomers}"
                                 th:unless="${c.accountNumber == '999999'}"
                                 th:value="${c.accountNumber}"
-                                th:text="${c.fullName + ' (' +
+                                th:text="${c.name + ' (' +
                                     c.accountNumber + ') - LKR ' +
                                     #numbers.formatDecimal(
                                         c.balance, 1, 'COMMA', 2, 'POINT')}">
@@ -88,27 +88,27 @@
                     </select>
 
                     <small class="error"
-                           th:if="${#fields.hasErrors('fromAccount')}"
-                           th:errors="*{fromAccount}"></small>
+                           th:if="${#fields.hasErrors('senderAccountNumber')}"
+                           th:errors="*{senderAccountNumber}"></small>
                 </div>
 
                 <div class="field">
                     <label for="toAccount">To (receiver)</label>
 
-                    <select id="toAccount" th:field="*{toAccount}">
+                    <select id="toAccount" th:field="*{receiverAccountNumber}">
                         <option value="">-- Select receiver --</option>
 
                         <option th:each="c : ${allCustomers}"
                                 th:unless="${c.accountNumber == '999999'}"
                                 th:value="${c.accountNumber}"
-                                th:text="${c.fullName + ' (' +
+                                th:text="${c.name + ' (' +
                                     c.accountNumber + ')'}">
                         </option>
                     </select>
 
                     <small class="error"
-                           th:if="${#fields.hasErrors('toAccount')}"
-                           th:errors="*{toAccount}"></small>
+                           th:if="${#fields.hasErrors('receiverAccountNumber')}"
+                           th:errors="*{receiverAccountNumber}"></small>
                 </div>
 
                 <div class="field">
@@ -161,12 +161,12 @@
 
                     <input type="text"
                            id="fullName"
-                           th:field="*{fullName}"
+                           th:field="*{name}"
                            placeholder="e.g. Nuwan Jayasinghe">
 
                     <small class="error"
-                           th:if="${#fields.hasErrors('fullName')}"
-                           th:errors="*{fullName}"></small>
+                           th:if="${#fields.hasErrors('name')}"
+                           th:errors="*{name}"></small>
                 </div>
 
                 <div class="field">
@@ -254,7 +254,7 @@
 
                 <tr th:each="c : ${customers}">
                     <td th:text="${c.accountNumber}"></td>
-                    <td th:text="${c.fullName}"></td>
+                    <td th:text="${c.name}"></td>
                     <td th:text="${c.email}"></td>
 
                     <td class="num"
@@ -306,11 +306,11 @@
                             t.createdAt, 'yyyy-MM-dd HH:mm:ss')
                         : '-'}"></td>
 
-                    <td th:text="${t.fromAccount != null
-                        ? t.fromAccount : '-'}"></td>
+                    <td th:text="${t.senderAccountNumber != null
+                        ? t.senderAccountNumber : '-'}"></td>
 
-                    <td th:text="${t.toAccount != null
-                        ? t.toAccount : '-'}"></td>
+                    <td th:text="${t.receiverAccountNumber != null
+                        ? t.receiverAccountNumber : '-'}"></td>
 
                     <td class="num"
                         th:text="${#numbers.formatDecimal(

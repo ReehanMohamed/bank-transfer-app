@@ -18,4 +18,6 @@ public class TransferRequest {
     private String receiverAccountNumber;
 
     private double amount;
+
+    private boolean simulateFailure;
 }
