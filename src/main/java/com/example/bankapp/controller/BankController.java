@@ -1,106 +1,240 @@
 package com.example.bankapp.controller;
 
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.example.bankapp.dto.TransferRequest;
-import com.example.bankapp.model.BankTransaction;
+import com.example.bankapp.exception.BankException;
 import com.example.bankapp.model.Customer;
-import com.example.bankapp.repository.BankTransactionRepository;
-import com.example.bankapp.repository.CustomerRepository;
 import com.example.bankapp.service.BankService;
 import com.example.bankapp.service.TransactionAuditService;
-@RestController
-@RequestMapping("/bank")
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import java.math.BigDecimal;
+
+@Controller
+@RequiredArgsConstructor
 public class BankController {
+
     private final BankService bankService;
     private final TransactionAuditService auditService;
-    private final CustomerRepository customerRepository;
-    private final BankTransactionRepository transactionRepository;
 
-    public BankController(
-            BankService bankService,
-            TransactionAuditService auditService,
-            CustomerRepository customerRepository,
-            BankTransactionRepository transactionRepository) {
+    // Dashboard
+    @GetMapping("/")
+    public String dashboard(
+            @RequestParam(required = false) String keyword,
+            Model model) {
 
-        this.bankService = bankService;
-        this.auditService = auditService;
-        this.customerRepository = customerRepository;
-        this.transactionRepository = transactionRepository;
+        model.addAttribute("customers",
+                bankService.searchCustomers(keyword));
+
+        model.addAttribute("allCustomers",
+                bankService.getAllCustomers());
+
+        model.addAttribute("transactions",
+                bankService.getLatestTransactions());
+
+        model.addAttribute("totalCustomers",
+                bankService.getAllCustomers().size());
+
+        model.addAttribute("totalBalance",
+                bankService.getTotalBalance());
+
+        model.addAttribute("successCount",
+                bankService.getSuccessCount());
+
+        model.addAttribute("failedCount",
+                bankService.getFailedCount());
+
+        model.addAttribute("keyword", keyword);
+
+        if (!model.containsAttribute("transferRequest")) {
+            model.addAttribute("transferRequest",
+                    new TransferRequest());
+        }
+
+        if (!model.containsAttribute("customer")) {
+            model.addAttribute("customer", new Customer());
+        }
+
+        return "bank";
     }
 
-    // 1. Transfer money
-    @PostMapping("/transfer")
-    public ResponseEntity<?> transfer(
-            @RequestBody TransferRequest request) {
+    // Add customer
+    @PostMapping("/customers")
+    public String addCustomer(
+            @Valid @ModelAttribute("customer") Customer customer,
+            BindingResult result,
+            RedirectAttributes redirectAttributes) {
+
+        if (result.hasErrors()) {
+            redirectAttributes.addFlashAttribute(
+                    "org.springframework.validation.BindingResult.customer",
+                    result);
+
+            redirectAttributes.addFlashAttribute("customer", customer);
+
+            return "redirect:/";
+        }
 
         try {
+            bankService.createCustomer(customer);
 
-            bankService.transfer(request);
+            redirectAttributes.addFlashAttribute(
+                    "success", "Customer added successfully!");
 
-            return ResponseEntity.ok(
-                    Map.of("message", "Transfer successful")
-            );
-
-        } catch (RuntimeException e) {
-
-            // Save failed transaction independently
-            auditService.saveFailedTransaction(
-                    request.getSenderAccountNumber(),
-                    request.getReceiverAccountNumber(),
-                    request.getAmount(),
-                    e.getMessage()
-            );
-
-            return ResponseEntity.badRequest().body(
-                    Map.of(
-                            "status", "FAILED",
-                            "message", e.getMessage()
-                    )
-            );
+        } catch (BankException ex) {
+            redirectAttributes.addFlashAttribute(
+                    "error", ex.getMessage());
         }
+
+        return "redirect:/";
     }
 
-    // 2. Get all customers
-    @GetMapping("/customers")
-    public List<Customer> getAllCustomers() {
-        return customerRepository.findAllOrdered();
+    // Transfer money
+    @PostMapping("/transfer")
+    public String transfer(
+            @Valid @ModelAttribute("transferRequest")
+            TransferRequest request,
+            BindingResult result,
+            RedirectAttributes redirectAttributes) {
+
+        if (result.hasErrors()) {
+            redirectAttributes.addFlashAttribute(
+                    "error", "Please enter valid transfer details.");
+
+            return "redirect:/";
+        }
+
+        try {
+            bankService.transfer(
+                    request.getFromAccount(),
+                    request.getToAccount(),
+                    request.getAmount(),
+                    request.isSimulateFailure()
+            );
+
+            redirectAttributes.addFlashAttribute(
+                    "success", "Transfer completed successfully!");
+
+        } catch (Exception ex) {
+
+            // This executes after the transfer transaction has rolled back.
+            try {
+                auditService.recordFailure(
+                        request.getFromAccount(),
+                        request.getToAccount(),
+                        request.getAmount(),
+                        ex.getMessage()
+                );
+            } catch (Exception auditException) {
+                redirectAttributes.addFlashAttribute(
+                        "error", ex.getMessage()
+                                + ". Failed to save audit record.");
+                return "redirect:/";
+            }
+
+            redirectAttributes.addFlashAttribute(
+                    "error", ex.getMessage());
+        }
+
+        return "redirect:/";
     }
 
-    // 3. Get account history
-    @GetMapping("/history/{accountNumber}")
-    public List<BankTransaction> getAccountHistory(
-            @PathVariable String accountNumber) {
+    // Account history
+    @GetMapping("/accounts/{accountNumber}/history")
+    public String history(
+            @PathVariable String accountNumber,
+            Model model) {
 
-        return transactionRepository.findAccountHistory(accountNumber);
+        Customer customer = bankService.getCustomer(accountNumber);
+
+        model.addAttribute("customer", customer);
+
+        model.addAttribute("transactions",
+                bankService.getAccountHistory(accountNumber));
+
+        model.addAttribute("totalSent",
+                bankService.getTotalSent(accountNumber));
+
+        return "history";
     }
 
-    // 4. Get all transactions
-    @GetMapping("/transactions")
-    public List<BankTransaction> getAllTransactions() {
-        return transactionRepository.findAllOrdered();
+    // Deposit page
+    @GetMapping("/deposit")
+    public String depositPage(Model model) {
+
+        model.addAttribute("customers",
+                bankService.getAllCustomers());
+
+        return "deposit";
     }
 
-    // 5. Dashboard statistics
-    @GetMapping("/statistics")
-    public Map<String, Object> getStatistics() {
+    // Deposit money
+    @PostMapping("/deposit")
+    public String deposit(
+            @RequestParam String accountNumber,
+            @RequestParam BigDecimal amount,
+            RedirectAttributes redirectAttributes) {
 
-        return Map.of(
-                "totalCustomers", customerRepository.countAccounts(),
-                "totalBalance", customerRepository.getTotalBalance(),
-                "successfulTransactions",
-                transactionRepository.countSuccessfulTransactions(),
-                "failedTransactions",
-                transactionRepository.countFailedTransactions()
-        );
+        try {
+            bankService.deposit(accountNumber, amount);
+
+            redirectAttributes.addFlashAttribute(
+                    "success", "Deposit completed successfully!");
+
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute(
+                    "error", ex.getMessage());
+        }
+
+        return "redirect:/deposit";
+    }
+
+    // Withdraw page
+    @GetMapping("/withdraw")
+    public String withdrawPage(Model model) {
+
+        model.addAttribute("customers",
+                bankService.getAllCustomers());
+
+        return "withdraw";
+    }
+
+    // Withdraw money
+    @PostMapping("/withdraw")
+    public String withdraw(
+            @RequestParam String accountNumber,
+            @RequestParam BigDecimal amount,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+            bankService.withdraw(accountNumber, amount);
+
+            redirectAttributes.addFlashAttribute(
+                    "success", "Withdrawal completed successfully!");
+
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute(
+                    "error", ex.getMessage());
+        }
+
+        return "redirect:/withdraw";
+    }
+
+    // Large transfers page
+    @GetMapping("/large-transfers")
+    public String largeTransfers(
+            @RequestParam(defaultValue = "10000") BigDecimal min,
+            Model model) {
+
+        model.addAttribute("transfers",
+                bankService.getLargeTransfers(min));
+
+        model.addAttribute("min", min);
+
+        return "large-transfers";
     }
 }

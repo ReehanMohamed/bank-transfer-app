@@ -1,64 +1,50 @@
 package com.example.bankapp.config;
+
 import com.example.bankapp.model.Customer;
 import com.example.bankapp.repository.CustomerRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
-
-import com.example.bankapp.model.Customer;
-import com.example.bankapp.repository.CustomerRepository;
-
-//import java.math.BigDecimal;
+import java.math.BigDecimal;
 import java.util.List;
 
-/** Inserts three sample customers the first time the application starts (empty database). */
 @Component
+@RequiredArgsConstructor
 public class DataLoader implements CommandLineRunner {
 
     private final CustomerRepository customerRepository;
 
-    public DataLoader(CustomerRepository customerRepository) {
-        this.customerRepository = customerRepository;
-    }
-
     @Override
     public void run(String... args) {
 
-        if (!customerRepository.existsByAccountNumber("ACC1001")) {
+        if (customerRepository.count() == 0) {
 
-            customerRepository.save(
-                    new Customer(
-                            "ACC1001",
-                            "Reehan",
-                            "reehan@gmail.com",
-                            10000
-                    )
+            Customer kamal = new Customer(
+                    "100001",
+                    "Kamal",
+                    "kamal@gmail.com",
+                    new BigDecimal("50000.00")
             );
-        }
 
-        if (!customerRepository.existsByAccountNumber("ACC1002")) {
-
-            customerRepository.save(
-                    new Customer(
-                            "ACC1002",
-                            "Mohamed",
-                            "mohamed@gmail.com",
-                            5000
-                    )
+            Customer nimali = new Customer(
+                    "100002",
+                    "Nimali",
+                    "nimali@gmail.com",
+                    new BigDecimal("25000.00")
             );
-        }
 
-        if (!customerRepository.existsByAccountNumber("ACC1003")) {
-
-            customerRepository.save(
-                    new Customer(
-                            "ACC1003",
-                            "Kamal",
-                            "kamal@gmail.com",
-                            8000
-                    )
+            Customer saman = new Customer(
+                    "100003",
+                    "Saman",
+                    "saman@gmail.com",
+                    new BigDecimal("10000.00")
             );
-        }
 
-        System.out.println("Sample customers loaded successfully!");
+            customerRepository.saveAll(
+                    List.of(kamal, nimali, saman)
+            );
+
+            System.out.println("Sample customers inserted!");
+        }
     }
 }

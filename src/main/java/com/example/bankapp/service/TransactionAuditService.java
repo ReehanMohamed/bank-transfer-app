@@ -1,14 +1,14 @@
 package com.example.bankapp.service;
 
+import lombok.RequiredArgsConstructor;
+import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
 import com.example.bankapp.model.BankTransaction;
 import com.example.bankapp.model.TransactionStatus;
 import com.example.bankapp.repository.BankTransactionRepository;
 
-//import java.math.BigDecimal;
 
 /**
  * Saves a FAILED record after a transfer was rolled back.
@@ -16,31 +16,27 @@ import com.example.bankapp.repository.BankTransactionRepository;
  * so this record is committed even though the transfer itself was rolled back.
  */
 @Service
+@RequiredArgsConstructor
 public class TransactionAuditService {
+
         private final BankTransactionRepository transactionRepository;
 
-    public TransactionAuditService(
-            BankTransactionRepository transactionRepository) {
-
-        this.transactionRepository = transactionRepository;
-    }
-
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveFailedTransaction(
-            String sender,
-            String receiver,
-            double amount,
+    public void recordFailure(
+            String fromAccount,
+            String toAccount,
+            BigDecimal amount,
             String description) {
 
-        BankTransaction transaction = new BankTransaction();
-
-        transaction.setSenderAccountNumber(sender);
-        transaction.setReceiverAccountNumber(receiver);
-        transaction.setAmount(amount);
-        transaction.setStatus(TransactionStatus.FAILED);
-        transaction.setDescription(description);
+        BankTransaction transaction = new BankTransaction(
+                fromAccount,
+                toAccount,
+                amount,
+                TransactionStatus.FAILED,
+                description
+        );
 
         transactionRepository.save(transaction);
-    }
-        
+    } 
+
 }

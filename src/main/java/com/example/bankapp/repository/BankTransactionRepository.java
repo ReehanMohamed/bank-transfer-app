@@ -1,51 +1,62 @@
 package com.example.bankapp.repository;
-import com.example.bankapp.model.BankTransaction;
-import com.example.bankapp.model.TransactionStatus;
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.example.bankapp.model.BankTransaction;
-import java.util.List;
+import com.example.bankapp.model.TransactionStatus;
+
 public interface BankTransactionRepository
         extends JpaRepository<BankTransaction, Long> {
-
-                // Get all transactions ordered by date
+        
+        // 1. All transactions, latest first
     @Query("SELECT t FROM BankTransaction t ORDER BY t.createdAt DESC")
-    List<BankTransaction> findAllOrdered();
+    List<BankTransaction> findAllLatest();
 
-    // Get transactions for a particular account
+        // 2. Account transaction history
     @Query("""
-            SELECT t FROM BankTransaction t
-            WHERE t.senderAccountNumber = :account
-            OR t.receiverAccountNumber = :account
-            ORDER BY t.createdAt DESC
-            """)
-    List<BankTransaction> findAccountHistory(
-            @Param("account") String account
-    );
+        SELECT t FROM BankTransaction t
+        WHERE t.fromAccount = :account
+        OR t.toAccount = :account
+        ORDER BY t.createdAt DESC
+        """)
+    List<BankTransaction> findHistory(
+            @Param("account") String account);
 
-    // Get failed transactions
+        // 3. Filter transactions by status
     @Query("""
-            SELECT t FROM BankTransaction t
-            WHERE t.status = :status
-            ORDER BY t.createdAt DESC
-            """)
-    List<BankTransaction> findByStatus(
-            @Param("status") TransactionStatus status
-    );
+        SELECT t FROM BankTransaction t
+        WHERE t.status = :status
+        ORDER BY t.createdAt DESC
+        """)
+    List<BankTransaction> findByStatusLatest(
+            @Param("status") TransactionStatus status);
 
-    // Count successful transactions
-    @Query("""
-            SELECT COUNT(t) FROM BankTransaction t
-            WHERE t.status = 'SUCCESS'
-            """)
-    long countSuccessfulTransactions();
+        // 4. Count transactions by status
+    @Query("SELECT COUNT(t) FROM BankTransaction t WHERE t.status = :status")
+    long countByStatus(
+            @Param("status") TransactionStatus status);
 
-    // Count failed transactions
+        // Task 12: Large transfers
     @Query("""
-            SELECT COUNT(t) FROM BankTransaction t
-            WHERE t.status = 'FAILED'
-            """)
-    long countFailedTransactions();
+        SELECT t FROM BankTransaction t
+        WHERE t.status = com.example.bankapp.model.TransactionStatus.SUCCESS
+        AND t.amount >= :minAmount
+        ORDER BY t.amount DESC
+        """)
+    List<BankTransaction> findLargeTransfers(
+            @Param("minAmount") BigDecimal minAmount);
+
+        // Task 12: Total successful amount sent by an account
+    @Query("""
+        SELECT SUM(t.amount) FROM BankTransaction t
+        WHERE t.fromAccount = :account
+        AND t.status = :status
+        """)
+    BigDecimal getTotalSent(
+            @Param("account") String account,
+            @Param("status") TransactionStatus status);
 }

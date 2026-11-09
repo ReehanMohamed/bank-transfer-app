@@ -1,5 +1,6 @@
 package com.example.bankapp.repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -10,65 +11,61 @@ import org.springframework.data.repository.query.Param;
 
 import com.example.bankapp.model.Customer;
 
+import jakarta.transaction.Transactional;
+
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
-    Optional<Customer> findByAccountNumber(String accountNumber);
-
-    boolean existsByAccountNumber(String accountNumber);
-
-    // 1. Get customer by account number
+    // 1. Find customer using account number
     @Query("SELECT c FROM Customer c WHERE c.accountNumber = :accountNumber")
     Optional<Customer> getByAccountNumber(
-            @Param("accountNumber") String accountNumber
-    );
+            @Param("accountNumber") String accountNumber);
 
-    // 2. Count all accounts
-    @Query("SELECT COUNT(c) FROM Customer c")
-    long countAccounts();
+    // 2. Count accounts
+    @Query("SELECT COUNT(c) FROM Customer c WHERE c.accountNumber = :accountNumber")
+    long countAccounts(@Param("accountNumber") String accountNumber);
 
-    // 3. Count customers by email
+    // 3. Count emails
     @Query("SELECT COUNT(c) FROM Customer c WHERE c.email = :email")
     long countEmails(@Param("email") String email);
 
-    // 4. Find all customers ordered by name
-    @Query("SELECT c FROM Customer c ORDER BY c.name ASC")
+    // 4. Get all customers ordered by name
+    @Query("SELECT c FROM Customer c ORDER BY c.fullName ASC")
     List<Customer> findAllOrdered();
 
-    // 5. Search customer by name
-    @Query("SELECT c FROM Customer c WHERE LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%'))")
-    List<Customer> searchByName(@Param("name") String name);
+    // 5. Search customers by name
+    @Query("SELECT c FROM Customer c WHERE LOWER(c.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    List<Customer> searchByName(@Param("keyword") String keyword);
 
-    // 6. Get total balance
-    @Query("SELECT COALESCE(SUM(c.balance), 0) FROM Customer c")
-    double getTotalBalance();
+    // 6. Calculate total balance
+    @Query("SELECT SUM(c.balance) FROM Customer c")
+    BigDecimal getTotalBalance();
 
     // 7. Native SQL query
     @Query(value = "SELECT COUNT(*) FROM customers", nativeQuery = true)
     long countCustomersNative();
 
-    // 8. Debit amount from sender
-    @Modifying
+    // 8. Debit account safely
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
     @Query("""
-            UPDATE Customer c
-            SET c.balance = c.balance - :amount
-            WHERE c.accountNumber = :accountNumber
-            AND c.balance >= :amount
-            """)
+        UPDATE Customer c
+        SET c.balance = c.balance - :amount
+        WHERE c.accountNumber = :accountNumber
+        AND c.balance >= :amount
+        """)
     int debit(
             @Param("accountNumber") String accountNumber,
-            @Param("amount") double amount
-    );
+            @Param("amount") BigDecimal amount);
 
-    // 9. Credit amount to receiver
-    @Modifying
+    // 9. Credit account
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
     @Query("""
-            UPDATE Customer c
-            SET c.balance = c.balance + :amount
-            WHERE c.accountNumber = :accountNumber
-            """)
+        UPDATE Customer c
+        SET c.balance = c.balance + :amount
+        WHERE c.accountNumber = :accountNumber
+        """)
     int credit(
             @Param("accountNumber") String accountNumber,
-            @Param("amount") double amount
-    );
-
+            @Param("amount") BigDecimal amount);
 }

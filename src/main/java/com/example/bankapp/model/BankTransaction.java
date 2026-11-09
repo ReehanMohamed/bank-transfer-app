@@ -1,7 +1,9 @@
 package com.example.bankapp.model;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -10,80 +12,51 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Entity
-@Table(name = "bank_transactions")
+@Entity 
+@Table(name = "bank_transactions")  
+@Getter 
+@Setter 
+@NoArgsConstructor 
 public class BankTransaction {
-    @Id
+    @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String senderAccountNumber;
+    @Column(name = "from_account", length = 20)
+    private String fromAccount;
 
-    private String receiverAccountNumber;
+    @Column(name = "to_account", length = 20)
+    private String toAccount;
 
-    private double amount;
+    @Column(nullable = false, precision = 14, scale = 2)
+    private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private TransactionStatus status;
 
+    @Column(length = 255)
     private String description;
 
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-
-    public BankTransaction() {
-    }
 
     @PrePersist
     public void onCreate() {
-        createdAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public String getSenderAccountNumber() {
-        return senderAccountNumber;
-    }
-
-    public void setSenderAccountNumber(String senderAccountNumber) {
-        this.senderAccountNumber = senderAccountNumber;
-    }
-
-    public String getReceiverAccountNumber() {
-        return receiverAccountNumber;
-    }
-
-    public void setReceiverAccountNumber(String receiverAccountNumber) {
-        this.receiverAccountNumber = receiverAccountNumber;
-    }
-    public double getAmount() {
-        return amount;
-    }
-
-    public void setAmount(double amount) {
+    public BankTransaction(String fromAccount, String toAccount, BigDecimal amount, TransactionStatus status, String description) {
+        this.fromAccount = fromAccount;
+        this.toAccount = toAccount;
         this.amount = amount;
-    }
-
-    public TransactionStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(TransactionStatus status) {
         this.status = status;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
         this.description = description;
     }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
 }
-
